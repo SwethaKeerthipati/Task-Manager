@@ -1,11 +1,12 @@
+const dotenv = require("dotenv");
+
+dotenv.config();
 const mongoose = require("mongoose");
 
 mongoose.Promise = global.Promise;
+
 mongoose
-  .connect(
-    "mongodb+srv://swethakeerthipati:R8z42Ztvqf3GUJA3@cluster0.d0sfkdd.mongodb.net/Tasks",
-    { useNewUrlParser: true }
-  )
+  .connect(process.env.MONGODB_URI, { useNewUrlParser: true })
   .then(() => {
     console.log("Connected to MongoDB successfully :)");
   })
