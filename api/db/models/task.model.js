@@ -7,10 +7,11 @@ const TasksSchema = new mongoose.Schema({
     minlength: 1,
     trim: true,
   },
-  _listId: {
-    type: mongoose.Types.ObjectId,
-    required: true,
-  },
+  // _listId: {
+  //   // type: mongoose.Schema.Types.ObjectId,
+  //   required: true,
+  //   type: mongoose.Types.ObjectId,
+  // },
 });
 
 const Task = mongoose.model("Task", TasksSchema);
