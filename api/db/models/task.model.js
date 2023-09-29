@@ -7,14 +7,15 @@ const TasksSchema = new mongoose.Schema({
     minlength: 1,
     trim: true,
   },
-  // _listId: {
-  //   // type: mongoose.Schema.Types.ObjectId,
-  //   required: true,
-  //   type: mongoose.Types.ObjectId,
-  // },
+
   _listId: {
     type: String,
     required: true,
+  },
+
+  completed: {
+    type: Boolean,
+    default: false,
   },
 });
 

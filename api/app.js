@@ -10,6 +10,21 @@ const corsOptions = {
   origin: "http://localhost:4200", // Update with your Angular app's URL
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 };
+
+//CORS Headers middleware
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin,X-Requested-With,Content-Type,Accept"
+  );
+  next();
+});
+
 app.use(express.json());
 app.use(bodyParser.json());
 
@@ -146,7 +161,7 @@ app.patch("/lists/:listId/tasks/:taskId", (req, res) => {
       $set: req.body,
     }
   ).then(() => {
-    res.sendStatus(200);
+    res.send({ message: "Updated Successfully" });
   });
 });
 
