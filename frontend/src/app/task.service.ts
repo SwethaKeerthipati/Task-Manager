@@ -18,11 +18,15 @@ export class TaskService {
     return this.webReqService.post('lists', { title }) as Observable<List>;
   }
 
-  getTasks(listId: string): Observable<Task> {
-    return this.webReqService.get(`lists/${listId}/tasks`) as Observable<Task>;
+  getTasks(listId: string): Observable<Task[]> {
+    return this.webReqService.get(`lists/${listId}/tasks`) as Observable<
+      Task[]
+    >;
   }
 
-  createTask(title: string, listId: string) {
-    return this.webReqService.post(`lists/${listId}/tasks`, { title });
+  createTask(title: string, listId: string): Observable<Task> {
+    return this.webReqService.post(`lists/${listId}/tasks`, {
+      title,
+    }) as Observable<Task>;
   }
 }

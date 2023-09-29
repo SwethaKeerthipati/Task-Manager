@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+
 const { mongoose } = require("./db/mongoose");
 const bodyParser = require("body-parser");
 
@@ -9,6 +10,7 @@ const corsOptions = {
   origin: "http://localhost:4200", // Update with your Angular app's URL
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 };
+app.use(express.json());
 app.use(bodyParser.json());
 
 // app.use(cors());
@@ -123,12 +125,13 @@ app.post("/lists/:listId/tasks", async (req, res) => {
 
     const newTask = new Task({
       title: req.body.title,
-      _listId: req.params.listId,
+      _listId: listId,
     });
 
     await newTask.save();
     res.send(newTask);
   } catch (error) {
+    console.error(error);
     res.status(500).send("Internal server error");
   }
 });

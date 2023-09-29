@@ -21,7 +21,7 @@ export class TaskViewComponent implements OnInit {
       const listId = params['listId'];
       console.log(params);
       console.log('listId:', listId);
-      this.taskService.getTasks(params['listId']).subscribe((tasks: any) => {
+      this.taskService.getTasks(params['listId']).subscribe((tasks: Task[]) => {
         console.log('Tasks:', tasks);
         this.tasks = tasks;
       });

@@ -12,6 +12,10 @@ const TasksSchema = new mongoose.Schema({
   //   required: true,
   //   type: mongoose.Types.ObjectId,
   // },
+  _listId: {
+    type: String,
+    required: true,
+  },
 });
 
 const Task = mongoose.model("Task", TasksSchema);

@@ -1,8 +1,47 @@
+// import { Component, OnInit } from '@angular/core';
+// import { ActivatedRoute, Params } from '@angular/router';
+// import { Task } from 'src/app/models/task.model';
+// import { TaskService } from 'src/app/task.service';
+
+// @Component({
+//   selector: 'app-new-task',
+//   templateUrl: './new-task.component.html',
+//   styleUrls: ['./new-task.component.scss'],
+// })
+// export class NewTaskComponent implements OnInit {
+//   constructor(
+//     private taskService: TaskService,
+//     private route: ActivatedRoute
+//   ) {}
+
+//   listId: string = '';
+
+//   ngOnInit() {
+//     this.route.params.subscribe((params: Params) => {
+//       this.listId = params['listId'];
+//     });
+//   }
+
+//   createTask(title: string, listId: string) {
+//     this.taskService.createTask(title, this.listId).subscribe({
+//       next: (newTask: Task) => {
+//         console.log(newTask);
+//       },
+//       error: (error: any) => {
+//         console.error('An error occurred:', error);
+//         console.error('Error Message:', error.message);
+//       },
+//       complete: () => {
+//         console.log('Task creation complete.');
+//       },
+//     });
+//   }
+// }
+
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Params, Router } from '@angular/router';
-import { Observable } from 'rxjs';
-import { Task } from 'src/app/models/task.model';
 import { TaskService } from 'src/app/task.service';
+import { ActivatedRoute, Params, Router } from '@angular/router';
+import { Task } from 'src/app/models/task.model';
 
 @Component({
   selector: 'app-new-task',
@@ -10,33 +49,25 @@ import { TaskService } from 'src/app/task.service';
   styleUrls: ['./new-task.component.scss'],
 })
 export class NewTaskComponent implements OnInit {
-  listId!: string;
-  tasks: Task[] = [];
-
   constructor(
     private taskService: TaskService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
 
+  listId: string = '';
+
   ngOnInit() {
     this.route.params.subscribe((params: Params) => {
       this.listId = params['listId'];
-      console.log(this.listId);
     });
   }
 
-  // createTask(title: string) {
-  //   this.taskService
-  //     .createTask(title, this.listId)
-  //     .subscribe((newTask: any) => {
-  //       console.log(newTask, this.listId);
-  //       this.router.navigate(['../'], { relativeTo: this.route });
-  //     });
   createTask(title: string) {
-    this.taskService.createList(title).subscribe((newTask: any) => {
-      console.log(newTask);
-      this.router.navigate(['../'], { relativeTo: this.route });
-    });
+    this.taskService
+      .createTask(title, this.listId)
+      .subscribe((newTask: Task) => {
+        this.router.navigate(['../'], { relativeTo: this.route });
+      });
   }
 }
