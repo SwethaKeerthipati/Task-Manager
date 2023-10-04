@@ -2,48 +2,58 @@ const express = require("express");
 const app = express();
 
 const { mongoose } = require("./db/mongoose");
+
 const bodyParser = require("body-parser");
 
+// Load in the mongoose models
 const { List, Task, User } = require("./db/models");
-const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const corsOptions = {
-  origin: "http://localhost:4200", // Update with your Angular app's URL
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-};
 
-//CORS Headers middleware
+const jwt = require("jsonwebtoken");
+
+/* MIDDLEWARE  */
+
+// Load middleware
+app.use(bodyParser.json());
+
+// CORS HEADERS MIDDLEWARE
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Methods",
-    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+    "GET, POST, HEAD, OPTIONS, PUT, PATCH, DELETE"
   );
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin,X-Requested-With,Content-Type,Accept"
+    "Origin, X-Requested-With, Content-Type, Accept, x-access-token, x-refresh-token, _id"
   );
+
+  res.header(
+    "Access-Control-Expose-Headers",
+    "x-access-token, x-refresh-token"
+  );
+
   next();
 });
 
-//Authenication Middelware - to check a valid JWT token
-
+// check whether the request has a valid JWT access token
 let authenticate = (req, res, next) => {
   let token = req.header("x-access-token");
 
-  //verify jwt
+  // verify the JWT
   jwt.verify(token, User.getJWTSecret(), (err, decoded) => {
     if (err) {
+      // there was an error
+      // jwt is invalid - * DO NOT AUTHENTICATE *
       res.status(401).send(err);
     } else {
+      // jwt is valid
       req.user_id = decoded._id;
       next();
     }
   });
 };
 
-//Verify refresh token
-
+// Verify Refresh Token Middleware (which will be verifying the session)
 let verifySession = (req, res, next) => {
   // grab the refresh token from the request header
   let refreshToken = req.header("x-refresh-token");
@@ -95,28 +105,36 @@ let verifySession = (req, res, next) => {
     });
 };
 
-app.use(express.json());
-app.use(bodyParser.json());
+/* END MIDDLEWARE  */
 
-// app.use(cors());
-app.use(cors(corsOptions));
+/* ROUTE HANDLERS */
 
-app.get("/", (req, res) => {
-  res.send("Hello World!!");
-});
+/* LIST ROUTES */
 
-//Lists
-//Get all lists
+/**
+ * GET /lists
+ * Purpose: Get all lists
+ */
 app.get("/lists", authenticate, (req, res) => {
+  // We want to return an array of all the lists that belong to the authenticated user
   List.find({
-    _userid: req.user._id,
-  }).then((lists) => {
-    res.send(lists);
-  });
+    _userId: req.user_id,
+  })
+    .then((lists) => {
+      res.send(lists);
+    })
+    .catch((e) => {
+      res.send(e);
+    });
 });
 
-//Create lists
+/**
+ * POST /lists
+ * Purpose: Create a list
+ */
 app.post("/lists", authenticate, (req, res) => {
+  // We want to create a new list and return the new list document back to the user (which includes the id)
+  // The list information (fields) will be passed in via the JSON request body
   let title = req.body.title;
 
   let newList = new List({
@@ -124,90 +142,61 @@ app.post("/lists", authenticate, (req, res) => {
     _userId: req.user_id,
   });
   newList.save().then((listDoc) => {
+    // the full list document is returned (incl. id)
     res.send(listDoc);
   });
 });
 
-//Update lists
+/**
+ * PATCH /lists/:id
+ * Purpose: Update a specified list
+ */
 app.patch("/lists/:id", authenticate, (req, res) => {
+  // We want to update the specified list (list document with id in the URL) with the new values specified in the JSON body of the request
   List.findOneAndUpdate(
     { _id: req.params.id, _userId: req.user_id },
     {
       $set: req.body,
     }
   ).then(() => {
-    res.sendStatus(200);
+    res.send({ message: "updated successfully" });
   });
 });
 
-//Delete lists
+/**
+ * DELETE /lists/:id
+ * Purpose: Delete a list
+ */
 app.delete("/lists/:id", authenticate, (req, res) => {
+  // We want to delete the specified list (document with id in the URL)
   List.findOneAndRemove({
     _id: req.params.id,
     _userId: req.user_id,
   }).then((removedListDoc) => {
     res.send(removedListDoc);
 
-    //delete all the tasks that are in delete list
+    // delete all the tasks that are in the deleted list
     deleteTasksFromList(removedListDoc._id);
   });
 });
 
-// View a specific list by ID and its tasks
-app.get("/lists/:listId", authenticate, async (req, res) => {
-  const listId = req.params.listId;
-
-  try {
-    const list = await List.findById(listId);
-    if (!list) {
-      // If the list with the specified ID doesn't exist, return an error
-      res.status(404).send("List not found");
-    } else {
-      // If the list exists, retrieve its tasks and send both the list and tasks
-      const tasks = await Task.find({ _listId: listId });
-      res.send({ list, tasks });
-    }
-  } catch (error) {
-    res.status(500).send("Internal server error");
-  }
-});
-
-//Display all Tasks
+/**
+ * GET /lists/:listId/tasks
+ * Purpose: Get all tasks in a specific list
+ */
 app.get("/lists/:listId/tasks", authenticate, (req, res) => {
+  // We want to return all tasks that belong to a specific list (specified by listId)
   Task.find({
     _listId: req.params.listId,
-    _userId: req.user_id,
   }).then((tasks) => {
     res.send(tasks);
   });
 });
 
-// app.post("/lists/:listId/tasks", authenticate, async (req, res) => {
-//   const listId = req.params.listId;
-//   if (!listId) {
-//     return res.status(400).send("List ID is required.");
-//   }
-
-//   try {
-//     // Check if the list with the provided ID exists in the database
-//     const list = await List.findById(listId);
-//     if (!list) {
-//       return res.status(404).send("List not found.");
-//     }
-
-//     const newTask = new Task({
-//       title: req.body.title,
-//       _listId: listId,
-//     });
-
-//     await newTask.save();
-//     res.send(newTask);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).send("Internal server error");
-//   }
-// });
-
+/**
+ * POST /lists/:listId/tasks
+ * Purpose: Create a new task in a specific list
+ */
 app.post("/lists/:listId/tasks", authenticate, (req, res) => {
   // We want to create a new task in a list specified by listId
 
@@ -240,20 +229,10 @@ app.post("/lists/:listId/tasks", authenticate, (req, res) => {
     });
 });
 
-// app.patch("/lists/:listId/tasks/:taskId", (req, res) => {
-//   Task.findOneAndUpdate(
-//     {
-//       _id: req.params.taskId,
-//       _listId: req.params.listId,
-//     },
-//     {
-//       $set: req.body,
-//     }
-//   ).then(() => {
-//     res.send({ message: "Updated Successfully" });
-//   });
-// });
-
+/**
+ * PATCH /lists/:listId/tasks/:taskId
+ * Purpose: Update an existing task
+ */
 app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
   // We want to update an existing task (specified by taskId)
 
@@ -291,17 +270,10 @@ app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
     });
 });
 
-// app.delete("/lists/:listId/tasks/:taskId", (req, res) => {
-//   Task.findOneAndRemove({
-//     _id: req.params.taskId,
-//     _listId: req.params.listId,
-//   }).then((removeTaskDoc) => {
-//     res.send(removeTaskDoc);
-//   });
-// });
-
-//USER Routes
-
+/**
+ * DELETE /lists/:listId/tasks/:taskId
+ * Purpose: Delete a task
+ */
 app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
   List.findOne({
     _id: req.params.listId,
@@ -331,7 +303,12 @@ app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
     });
 });
 
-//USer Routes
+/* USER ROUTES */
+
+/**
+ * POST /users
+ * Purpose: Sign up
+ */
 app.post("/users", (req, res) => {
   // User sign up
 
@@ -353,6 +330,7 @@ app.post("/users", (req, res) => {
       });
     })
     .then((authTokens) => {
+      // Now we construct and send the response to the user with their auth tokens in the header and the user object in the body
       res
         .header("x-refresh-token", authTokens.refreshToken)
         .header("x-access-token", authTokens.accessToken)
@@ -363,8 +341,10 @@ app.post("/users", (req, res) => {
     });
 });
 
-// POST /users/login
-
+/**
+ * POST /users/login
+ * Purpose: Login
+ */
 app.post("/users/login", (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
@@ -395,7 +375,10 @@ app.post("/users/login", (req, res) => {
     });
 });
 
-//GET /users/me/access-token
+/**
+ * GET /users/me/access-token
+ * Purpose: generates and returns an access token
+ */
 app.get("/users/me/access-token", verifySession, (req, res) => {
   // we know that the user/caller is authenticated and we have the user_id and user object available to us
   req.userObject
@@ -407,7 +390,8 @@ app.get("/users/me/access-token", verifySession, (req, res) => {
       res.status(400).send(e);
     });
 });
-//Delete method
+
+/* HELPER METHODS */
 let deleteTasksFromList = (_listId) => {
   Task.deleteMany({
     _listId,
@@ -417,5 +401,5 @@ let deleteTasksFromList = (_listId) => {
 };
 
 app.listen(3000, () => {
-  console.log("Server is listening on Port 3000");
+  console.log("Server is listening on port 3000");
 });

@@ -91,7 +91,7 @@ UserSchema.methods.createSession = function () {
     });
 };
 
-UserSchema.statics.getJWTSecret = function () {
+UserSchema.statics.getJWTSecret = () => {
   return jwtSecret;
 };
 UserSchema.statics.findByIdAndToken = function (_id, token) {
@@ -177,6 +177,7 @@ let saveSessionToDatabase = (user, refreshToken) => {
 let generateRefreshTokenExpiryTime = () => {
   let daysUntilExpire = "10";
   let secondsUntilExpire = daysUntilExpire * 24 * 60 * 60;
+
   return Date.now() / 1000 + secondsUntilExpire;
 };
 
