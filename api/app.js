@@ -182,56 +182,156 @@ app.get("/lists/:listId/tasks", authenticate, (req, res) => {
   });
 });
 
-app.post("/lists/:listId/tasks", authenticate, async (req, res) => {
-  const listId = req.params.listId;
-  if (!listId) {
-    return res.status(400).send("List ID is required.");
-  }
+// app.post("/lists/:listId/tasks", authenticate, async (req, res) => {
+//   const listId = req.params.listId;
+//   if (!listId) {
+//     return res.status(400).send("List ID is required.");
+//   }
 
-  try {
-    // Check if the list with the provided ID exists in the database
-    const list = await List.findById(listId);
-    if (!list) {
-      return res.status(404).send("List not found.");
-    }
+//   try {
+//     // Check if the list with the provided ID exists in the database
+//     const list = await List.findById(listId);
+//     if (!list) {
+//       return res.status(404).send("List not found.");
+//     }
 
-    const newTask = new Task({
-      title: req.body.title,
-      _listId: listId,
+//     const newTask = new Task({
+//       title: req.body.title,
+//       _listId: listId,
+//     });
+
+//     await newTask.save();
+//     res.send(newTask);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send("Internal server error");
+//   }
+// });
+
+app.post("/lists/:listId/tasks", authenticate, (req, res) => {
+  // We want to create a new task in a list specified by listId
+
+  List.findOne({
+    _id: req.params.listId,
+    _userId: req.user_id,
+  })
+    .then((list) => {
+      if (list) {
+        // list object with the specified conditions was found
+        // therefore the currently authenticated user can create new tasks
+        return true;
+      }
+
+      // else - the list object is undefined
+      return false;
+    })
+    .then((canCreateTask) => {
+      if (canCreateTask) {
+        let newTask = new Task({
+          title: req.body.title,
+          _listId: req.params.listId,
+        });
+        newTask.save().then((newTaskDoc) => {
+          res.send(newTaskDoc);
+        });
+      } else {
+        res.sendStatus(404);
+      }
     });
-
-    await newTask.save();
-    res.send(newTask);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal server error");
-  }
 });
 
-app.patch("/lists/:listId/tasks/:taskId", (req, res) => {
-  Task.findOneAndUpdate(
-    {
-      _id: req.params.taskId,
-      _listId: req.params.listId,
-    },
-    {
-      $set: req.body,
-    }
-  ).then(() => {
-    res.send({ message: "Updated Successfully" });
-  });
+// app.patch("/lists/:listId/tasks/:taskId", (req, res) => {
+//   Task.findOneAndUpdate(
+//     {
+//       _id: req.params.taskId,
+//       _listId: req.params.listId,
+//     },
+//     {
+//       $set: req.body,
+//     }
+//   ).then(() => {
+//     res.send({ message: "Updated Successfully" });
+//   });
+// });
+
+app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
+  // We want to update an existing task (specified by taskId)
+
+  List.findOne({
+    _id: req.params.listId,
+    _userId: req.user_id,
+  })
+    .then((list) => {
+      if (list) {
+        // list object with the specified conditions was found
+        // therefore the currently authenticated user can make updates to tasks within this list
+        return true;
+      }
+
+      // else - the list object is undefined
+      return false;
+    })
+    .then((canUpdateTasks) => {
+      if (canUpdateTasks) {
+        // the currently authenticated user can update tasks
+        Task.findOneAndUpdate(
+          {
+            _id: req.params.taskId,
+            _listId: req.params.listId,
+          },
+          {
+            $set: req.body,
+          }
+        ).then(() => {
+          res.send({ message: "Updated successfully." });
+        });
+      } else {
+        res.sendStatus(404);
+      }
+    });
 });
 
-app.delete("/lists/:listId/tasks/:taskId", (req, res) => {
-  Task.findOneAndRemove({
-    _id: req.params.taskId,
-    _listId: req.params.listId,
-  }).then((removeTaskDoc) => {
-    res.send(removeTaskDoc);
-  });
-});
+// app.delete("/lists/:listId/tasks/:taskId", (req, res) => {
+//   Task.findOneAndRemove({
+//     _id: req.params.taskId,
+//     _listId: req.params.listId,
+//   }).then((removeTaskDoc) => {
+//     res.send(removeTaskDoc);
+//   });
+// });
 
 //USER Routes
+
+app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
+  List.findOne({
+    _id: req.params.listId,
+    _userId: req.user_id,
+  })
+    .then((list) => {
+      if (list) {
+        // list object with the specified conditions was found
+        // therefore the currently authenticated user can make updates to tasks within this list
+        return true;
+      }
+
+      // else - the list object is undefined
+      return false;
+    })
+    .then((canDeleteTasks) => {
+      if (canDeleteTasks) {
+        Task.findOneAndRemove({
+          _id: req.params.taskId,
+          _listId: req.params.listId,
+        }).then((removedTaskDoc) => {
+          res.send(removedTaskDoc);
+        });
+      } else {
+        res.sendStatus(404);
+      }
+    });
+});
+
+//USer Routes
 app.post("/users", (req, res) => {
   // User sign up
 
