@@ -91,6 +91,9 @@ UserSchema.methods.createSession = function () {
     });
 };
 
+UserSchema.statics.getJWTSecret = function () {
+  return jwtSecret;
+};
 UserSchema.statics.findByIdAndToken = function (_id, token) {
   // finds user by id and token
   // used in auth middleware (verifySession)

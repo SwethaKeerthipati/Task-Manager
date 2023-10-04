@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 
 const { List, Task, User } = require("./db/models");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const corsOptions = {
   origin: "http://localhost:4200", // Update with your Angular app's URL
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -24,6 +25,22 @@ app.use(function (req, res, next) {
   );
   next();
 });
+
+//Authenication Middelware - to check a valid JWT token
+
+let authenticate = (req, res, next) => {
+  let token = req.header("x-access-token");
+
+  //verify jwt
+  jwt.verify(token, User.getJWTSecret(), (err, decoded) => {
+    if (err) {
+      res.status(401).send(err);
+    } else {
+      req.user_id = decoded._id;
+      next();
+    }
+  });
+};
 
 //Verify refresh token
 
@@ -90,18 +107,21 @@ app.get("/", (req, res) => {
 
 //Lists
 //Get all lists
-app.get("/lists", (req, res) => {
-  List.find({}).then((lists) => {
+app.get("/lists", authenticate, (req, res) => {
+  List.find({
+    _userid: req.user._id,
+  }).then((lists) => {
     res.send(lists);
   });
 });
 
 //Create lists
-app.post("/lists", (req, res) => {
+app.post("/lists", authenticate, (req, res) => {
   let title = req.body.title;
 
   let newList = new List({
     title,
+    _userId: req.user_id,
   });
   newList.save().then((listDoc) => {
     res.send(listDoc);
@@ -109,9 +129,9 @@ app.post("/lists", (req, res) => {
 });
 
 //Update lists
-app.patch("/lists/:id", (req, res) => {
+app.patch("/lists/:id", authenticate, (req, res) => {
   List.findOneAndUpdate(
-    { _id: req.params.id },
+    { _id: req.params.id, _userId: req.user_id },
     {
       $set: req.body,
     }
@@ -121,16 +141,20 @@ app.patch("/lists/:id", (req, res) => {
 });
 
 //Delete lists
-app.delete("/lists/:id", (req, res) => {
+app.delete("/lists/:id", authenticate, (req, res) => {
   List.findOneAndRemove({
     _id: req.params.id,
+    _userId: req.user_id,
   }).then((removedListDoc) => {
     res.send(removedListDoc);
+
+    //delete all the tasks that are in delete list
+    deleteTasksFromList(removedListDoc._id);
   });
 });
 
 // View a specific list by ID and its tasks
-app.get("/lists/:listId", async (req, res) => {
+app.get("/lists/:listId", authenticate, async (req, res) => {
   const listId = req.params.listId;
 
   try {
@@ -149,15 +173,16 @@ app.get("/lists/:listId", async (req, res) => {
 });
 
 //Display all Tasks
-app.get("/lists/:listId/tasks", (req, res) => {
+app.get("/lists/:listId/tasks", authenticate, (req, res) => {
   Task.find({
     _listId: req.params.listId,
+    _userId: req.user_id,
   }).then((tasks) => {
     res.send(tasks);
   });
 });
 
-app.post("/lists/:listId/tasks", async (req, res) => {
+app.post("/lists/:listId/tasks", authenticate, async (req, res) => {
   const listId = req.params.listId;
   if (!listId) {
     return res.status(400).send("List ID is required.");
@@ -282,6 +307,14 @@ app.get("/users/me/access-token", verifySession, (req, res) => {
       res.status(400).send(e);
     });
 });
+//Delete method
+let deleteTasksFromList = (_listId) => {
+  Task.deleteMany({
+    _listId,
+  }).then(() => {
+    console.log("Tasks from " + _listId + " were deleted!");
+  });
+};
 
 app.listen(3000, () => {
   console.log("Server is listening on Port 3000");
