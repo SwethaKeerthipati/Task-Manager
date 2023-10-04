@@ -35,8 +35,6 @@ const UserSchema = new mongoose.Schema({
 UserSchema.methods.toJSON = function () {
   const user = this;
   const userObject = user.toObject();
-
-  // return the document except the password and sessions
   return _.omit(userObject, ["password", "sessions"]);
 };
 
@@ -96,7 +94,6 @@ UserSchema.statics.getJWTSecret = () => {
 };
 UserSchema.statics.findByIdAndToken = function (_id, token) {
   // finds user by id and token
-  // used in auth middleware (verifySession)
 
   const User = this;
 
@@ -126,10 +123,8 @@ UserSchema.statics.findByCredentials = function (email, password) {
 UserSchema.statics.hasRefreshTokenExpired = (expiresAt) => {
   let secondsSinceEpoch = Date.now() / 1000;
   if (expiresAt > secondsSinceEpoch) {
-    // hasn't expired
     return false;
   } else {
-    // has expired
     return true;
   }
 };

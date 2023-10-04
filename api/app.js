@@ -5,7 +5,6 @@ const { mongoose } = require("./db/mongoose");
 
 const bodyParser = require("body-parser");
 
-// Load in the mongoose models
 const { List, Task, User } = require("./db/models");
 
 const jwt = require("jsonwebtoken");
@@ -42,8 +41,6 @@ let authenticate = (req, res, next) => {
   // verify the JWT
   jwt.verify(token, User.getJWTSecret(), (err, decoded) => {
     if (err) {
-      // there was an error
-      // jwt is invalid - * DO NOT AUTHENTICATE *
       res.status(401).send(err);
     } else {
       // jwt is valid
@@ -53,9 +50,8 @@ let authenticate = (req, res, next) => {
   });
 };
 
-// Verify Refresh Token Middleware (which will be verifying the session)
+// Verify Refresh Token
 let verifySession = (req, res, next) => {
-  // grab the refresh token from the request header
   let refreshToken = req.header("x-refresh-token");
 
   // grab the _id from the request header
@@ -70,10 +66,6 @@ let verifySession = (req, res, next) => {
             "User not found. Make sure that the refresh token and user id are correct",
         });
       }
-
-      // if the code reaches here - the user was found
-      // therefore the refresh token exists in the database - but we still have to check if it has expired or not
-
       req.user_id = user._id;
       req.userObject = user;
       req.refreshToken = refreshToken;
@@ -91,10 +83,8 @@ let verifySession = (req, res, next) => {
       });
 
       if (isSessionValid) {
-        // the session is VALID - call next() to continue with processing this web request
         next();
       } else {
-        // the session is not valid
         return Promise.reject({
           error: "Refresh token has expired or the session is invalid",
         });
@@ -107,16 +97,11 @@ let verifySession = (req, res, next) => {
 
 /* END MIDDLEWARE  */
 
-/* ROUTE HANDLERS */
+//  LIST ROUTES
 
-/* LIST ROUTES */
+//  GET all lists
 
-/**
- * GET /lists
- * Purpose: Get all lists
- */
 app.get("/lists", authenticate, (req, res) => {
-  // We want to return an array of all the lists that belong to the authenticated user
   List.find({
     _userId: req.user_id,
   })
@@ -128,13 +113,9 @@ app.get("/lists", authenticate, (req, res) => {
     });
 });
 
-/**
- * POST /lists
- * Purpose: Create a list
- */
+//  POST -create alist
+
 app.post("/lists", authenticate, (req, res) => {
-  // We want to create a new list and return the new list document back to the user (which includes the id)
-  // The list information (fields) will be passed in via the JSON request body
   let title = req.body.title;
 
   let newList = new List({
@@ -142,17 +123,13 @@ app.post("/lists", authenticate, (req, res) => {
     _userId: req.user_id,
   });
   newList.save().then((listDoc) => {
-    // the full list document is returned (incl. id)
     res.send(listDoc);
   });
 });
 
-/**
- * PATCH /lists/:id
- * Purpose: Update a specified list
- */
+//  PATCH /lists/:id -update a list
+
 app.patch("/lists/:id", authenticate, (req, res) => {
-  // We want to update the specified list (list document with id in the URL) with the new values specified in the JSON body of the request
   List.findOneAndUpdate(
     { _id: req.params.id, _userId: req.user_id },
     {
@@ -163,29 +140,22 @@ app.patch("/lists/:id", authenticate, (req, res) => {
   });
 });
 
-/**
- * DELETE /lists/:id
- * Purpose: Delete a list
- */
+//  DELETE /lists/:id -delete a list
+
 app.delete("/lists/:id", authenticate, (req, res) => {
-  // We want to delete the specified list (document with id in the URL)
   List.findOneAndRemove({
     _id: req.params.id,
     _userId: req.user_id,
   }).then((removedListDoc) => {
     res.send(removedListDoc);
 
-    // delete all the tasks that are in the deleted list
     deleteTasksFromList(removedListDoc._id);
   });
 });
 
-/**
- * GET /lists/:listId/tasks
- * Purpose: Get all tasks in a specific list
- */
+//  GET /lists/:listId/tasks -get all taks in a specific list
+
 app.get("/lists/:listId/tasks", authenticate, (req, res) => {
-  // We want to return all tasks that belong to a specific list (specified by listId)
   Task.find({
     _listId: req.params.listId,
   }).then((tasks) => {
@@ -193,25 +163,18 @@ app.get("/lists/:listId/tasks", authenticate, (req, res) => {
   });
 });
 
-/**
- * POST /lists/:listId/tasks
- * Purpose: Create a new task in a specific list
- */
-app.post("/lists/:listId/tasks", authenticate, (req, res) => {
-  // We want to create a new task in a list specified by listId
+//  POST /lists/:listId/tasks -Create a new task in a specific list
 
+app.post("/lists/:listId/tasks", authenticate, (req, res) => {
   List.findOne({
     _id: req.params.listId,
     _userId: req.user_id,
   })
     .then((list) => {
       if (list) {
-        // list object with the specified conditions was found
-        // therefore the currently authenticated user can create new tasks
         return true;
       }
 
-      // else - the list object is undefined
       return false;
     })
     .then((canCreateTask) => {
@@ -229,30 +192,22 @@ app.post("/lists/:listId/tasks", authenticate, (req, res) => {
     });
 });
 
-/**
- * PATCH /lists/:listId/tasks/:taskId
- * Purpose: Update an existing task
- */
-app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
-  // We want to update an existing task (specified by taskId)
+//  PATCH /lists/:listId/tasks/:taskId -Update an existing task
 
+app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
   List.findOne({
     _id: req.params.listId,
     _userId: req.user_id,
   })
     .then((list) => {
       if (list) {
-        // list object with the specified conditions was found
-        // therefore the currently authenticated user can make updates to tasks within this list
         return true;
       }
 
-      // else - the list object is undefined
       return false;
     })
     .then((canUpdateTasks) => {
       if (canUpdateTasks) {
-        // the currently authenticated user can update tasks
         Task.findOneAndUpdate(
           {
             _id: req.params.taskId,
@@ -270,10 +225,8 @@ app.patch("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
     });
 });
 
-/**
- * DELETE /lists/:listId/tasks/:taskId
- * Purpose: Delete a task
- */
+//  DELETE /lists/:listId/tasks/:taskId-delete a task
+
 app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
   List.findOne({
     _id: req.params.listId,
@@ -281,12 +234,9 @@ app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
   })
     .then((list) => {
       if (list) {
-        // list object with the specified conditions was found
-        // therefore the currently authenticated user can make updates to tasks within this list
         return true;
       }
 
-      // else - the list object is undefined
       return false;
     })
     .then((canDeleteTasks) => {
@@ -305,13 +255,9 @@ app.delete("/lists/:listId/tasks/:taskId", authenticate, (req, res) => {
 
 /* USER ROUTES */
 
-/**
- * POST /users
- * Purpose: Sign up
- */
-app.post("/users", (req, res) => {
-  // User sign up
+//  POST /users -Signup
 
+app.post("/users", (req, res) => {
   let body = req.body;
   let newUser = new User(body);
 
@@ -321,16 +267,11 @@ app.post("/users", (req, res) => {
       return newUser.createSession();
     })
     .then((refreshToken) => {
-      // Session created successfully - refreshToken returned.
-      // now we geneate an access auth token for the user
-
       return newUser.generateAccessAuthToken().then((accessToken) => {
-        // access auth token generated successfully, now we return an object containing the auth tokens
         return { accessToken, refreshToken };
       });
     })
     .then((authTokens) => {
-      // Now we construct and send the response to the user with their auth tokens in the header and the user object in the body
       res
         .header("x-refresh-token", authTokens.refreshToken)
         .header("x-access-token", authTokens.accessToken)
@@ -341,10 +282,8 @@ app.post("/users", (req, res) => {
     });
 });
 
-/**
- * POST /users/login
- * Purpose: Login
- */
+//  POST /users/login
+
 app.post("/users/login", (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
@@ -354,16 +293,11 @@ app.post("/users/login", (req, res) => {
       return user
         .createSession()
         .then((refreshToken) => {
-          // Session created successfully - refreshToken returned.
-          // now we geneate an access auth token for the user
-
           return user.generateAccessAuthToken().then((accessToken) => {
-            // access auth token generated successfully, now we return an object containing the auth tokens
             return { accessToken, refreshToken };
           });
         })
         .then((authTokens) => {
-          // Now we construct and send the response to the user with their auth tokens in the header and the user object in the body
           res
             .header("x-refresh-token", authTokens.refreshToken)
             .header("x-access-token", authTokens.accessToken)
@@ -375,12 +309,9 @@ app.post("/users/login", (req, res) => {
     });
 });
 
-/**
- * GET /users/me/access-token
- * Purpose: generates and returns an access token
- */
+// GET /users/me/access-token -generates and returns new access token
+
 app.get("/users/me/access-token", verifySession, (req, res) => {
-  // we know that the user/caller is authenticated and we have the user_id and user object available to us
   req.userObject
     .generateAccessAuthToken()
     .then((accessToken) => {

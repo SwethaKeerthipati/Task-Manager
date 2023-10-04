@@ -8,9 +8,13 @@ const ListSchema = new mongoose.Schema({
     minlength: 1,
     trim: true,
   },
-  _userid: {
+  // _userid: {
+  //   type: String,
+  //   re: User,
+  //   required: true,
+  // },
+  _userId: {
     type: mongoose.Types.ObjectId,
-    re: User,
     required: true,
   },
 });
