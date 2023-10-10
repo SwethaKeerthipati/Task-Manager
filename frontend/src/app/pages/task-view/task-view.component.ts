@@ -48,6 +48,7 @@ export class TaskViewComponent implements OnInit {
       task.completed = !task.completed;
     });
   }
+
   onDeleteListClick() {
     this.taskService.deleteList(this.selectedListId).subscribe((res: any) => {
       this.router.navigate(['/lists']);
