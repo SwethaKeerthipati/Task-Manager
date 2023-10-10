@@ -1,0 +1,5 @@
+{
+  "version": 2,
+  "builds": [{ "src": "frontend", "use": "@vercel/node@14" }],
+  "routes": [{ "src": "/(.*)", "dest": "/frontend/index.html" }]
+}
