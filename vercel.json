@@ -1,7 +1,7 @@
 {
   "version": 2,
   "builds": [
-    { "src": "frontend", "use": "@vercel/node@14" },
+    { "src": "dist/frontend", "use": "@vercel/node@14" },
     { "src": "api", "use": "@vercel/node@14" }
   ],
   "rewrites": [
