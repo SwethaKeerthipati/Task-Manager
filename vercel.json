@@ -1,5 +1,11 @@
 {
   "version": 2,
-  "builds": [{ "src": "frontend", "use": "@vercel/node@14" }],
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "builds": [
+    { "src": "frontend", "use": "@vercel/node@14" },
+    { "src": "api", "use": "@vercel/node@14" }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
